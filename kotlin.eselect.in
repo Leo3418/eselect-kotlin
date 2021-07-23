@@ -19,8 +19,8 @@ validate_ver() {
 # Checks if there is permission to modify system-wide preferences, or calls
 # 'die' otherwise.
 check_system_perm() {
-	[[ -w "${PREF_SYSTEM_ROOT}" ]] || \
-		die "Could not set the system-wide preference: Permission denied"
+	[[ -w "${PREF_SYSTEM_ROOT}" || -w "${PREF_SYSTEM_ROOT%/*/*/*}" ]] || \
+		die "Could not set system-wide preference: Permission denied"
 }
 
 # Echos a list of Kotlin compiler packages currently installed on the system.
@@ -28,6 +28,8 @@ check_system_perm() {
 # which causes only Kotlin compiler packages for that feature release to be
 # included in the list.
 find_targets() {
+	[[ -d "${PKG_DESC_ROOT}" ]] || return
+
 	local vers
 	if [[ -n "$1" ]]; then
 		vers="${PKG_DESC_ROOT}/$1"
@@ -37,9 +39,10 @@ find_targets() {
 	else
 		vers="${PKG_DESC_ROOT}"/*
 	fi
-	for ver in vers; do
-		for pkg in "$ver"/*; do
-			echo "${pkg}"
+	for ver in ${vers}; do
+		[[ -d "${ver}" ]] || continue
+		for pkg in "${ver}"/*; do
+			[[ -f "${pkg}" ]] && basename "${pkg}"
 		done
 	done
 }
@@ -93,7 +96,7 @@ describe_show() {
 }
 
 describe_show_options() {
-	echo "version : Only show for a specific Kotlin version (optional)"
+	echo "<version> : Limit to a specific Kotlin version (optional)"
 }
 
 describe_show_parameters() {
@@ -120,9 +123,18 @@ do_show() {
 		my_show "${PREF_SYSTEM_ROOT}/$1" "$1"
 	else
 		my_show "${PREF_USER_SYMLINK}" "user"
-		for ver in "${PREF_SYSTEM_ROOT}"/*; do
-			my_show "${PREF_SYSTEM_ROOT}/${ver}" "${ver}"
-		done
+		if [[ -d "${PREF_SYSTEM_ROOT}" ]]; then
+			for ver in "${PREF_SYSTEM_ROOT}"/*; do
+				my_show "${ver}" "$(basename "${ver}")"
+			done
+		fi
+		# If the system compiler symbolic link is not present, the previous
+		# for loop will not print anything for the system compiler.  In this
+		# case, print it separately to report that it is unset
+		local system_symlink="${PREF_SYSTEM_ROOT}/system"
+		if ! [[ -L "${system_symlink}" && -d "${system_symlink}" ]]; then
+			my_show "${system_symlink}" "system"
+		fi
 	fi
 }
 
@@ -133,7 +145,7 @@ describe_list() {
 }
 
 describe_list_options() {
-	echo "version : Filter compilers for a specific Kotlin version (optional)"
+	echo "<version> : Limit to a specific Kotlin version (optional)"
 }
 
 describe_list_parameters() {
@@ -155,26 +167,26 @@ do_list() {
 			"${PREF_USER_SYMLINK}")" ]]; then
 			mark+=" user"
 		fi
-		for ver in "${PREF_SYSTEM_ROOT}"/*; do
-			if [[ "${target}" == "$(get_pkg_from_symlink \
-				"${PREF_SYSTEM_ROOT}/${ver}")" ]]; then
+		for symlink in "${PREF_SYSTEM_ROOT}"/*; do
+			ver="$(basename "${symlink}")"
+			if [[ "${target}" == "$(get_pkg_from_symlink "${symlink}")" ]]; then
 				mark+=" ${ver}"
 			fi
 		done
-		targets[i]="${targets[i]} ${mark}"
+		targets[i]="${targets[i]} $(highlight ${mark})"
     done
-	write_numbered_list -m "(none found)" "${all[@]}"
+	write_numbered_list -m "(none found)" "${targets[@]}"
 }
 
 # 'set' action
 
 describe_set() {
-	echo "Set a Kotlin compiler for the system, the user, or a Kotlin version"
+	echo "Set a default Kotlin compiler"
 }
 
 describe_set_options() {
-	echo "--if-unset : Do not change unless there is no valid compiler set"
-	echo "version	 : Set for a specific Kotlin version (optional)"
+	echo "--if-unset : Do not change unless no valid compiler is set"
+	echo "<version> : Limit to a specific Kotlin version (optional)"
 }
 
 describe_set_parameters() {
@@ -224,7 +236,20 @@ describe_update() {
 
 do_update() {
 	check_system_perm
-	for ver in "${PKG_DESC_ROOT}"; do
+	[[ -d "${PKG_DESC_ROOT}" ]] || return
+	local system_symlink="${PREF_SYSTEM_ROOT}/system"
+	if [[ ! -L "${system_symlink}" && -e "${system_symlink}" ]]; then
+		die "System preference file is not a symbolic link: ${system_symlink}"
+	fi
+	if ! [[ -L "${system_symlink}" && -d "${system_symlink}" ]]; then
+		# Arbitrarily select a compiler package for the latest feature release
+		# and set it
+		local latest_ver="$(ls -1 -v "${PKG_DESC_ROOT}" | tail -1)"
+		local system_target=( $(find_targets "${latest_ver}") )
+		set_symlink "${system_target}" "${system_symlink}"
+	fi
+	for ver in "${PKG_DESC_ROOT}"/*; do
+		ver="$(basename "${ver}")"
 		local symlink="${PREF_SYSTEM_ROOT}/${ver}"
 		if [[ ! -L "${symlink}" && -e "${symlink}" ]]; then
 			die "Target already exists but is not a symbolic link: ${symlink}"
@@ -240,11 +265,12 @@ do_update() {
 # 'cleanup' action
 
 describe_cleanup() {
-	echo "Unset system-wide preferences that are no longer valid"
+	echo "Unset system-wide preferences that are invalid"
 }
 
 do_cleanup() {
 	check_system_perm
+	[[ -d "${PREF_SYSTEM_ROOT}" ]] || return
 	for symlink in "${PREF_SYSTEM_ROOT}"/*; do
 		if [[ -L "${symlink}" && ! -d "${symlink}" ]]; then
 			rm "${symlink_abs}" || die "Failed to unset compiler preference"
