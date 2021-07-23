@@ -5,3 +5,18 @@ dist_pkglibexec_SCRIPTS = \
 	run-kotlin-tool.sh
 EXTRA_DIST = \
 	run-kotlin-tool.sh.in
+
+tools = \
+	kapt \
+	kotlin \
+	kotlinc \
+	kotlinc-js \
+	kotlinc-jvm
+
+$(tools):
+	$(MKDIR_P) "$(DESTDIR)/$(bindir)"
+	$(LN_S) "$(pkglibexecdir)/run-kotlin-tool.sh" "$(DESTDIR)/$(bindir)/$@"
+
+install-exec-hook: $(tools)
+
+.PHONY: $(tools)
