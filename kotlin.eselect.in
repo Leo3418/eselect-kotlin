@@ -194,18 +194,18 @@ describe_set_parameters() {
 }
 
 my_set() {
-	local symlink="$1" target="$2" if_unset="$3"
+	local symlink="$1" target="$2" if_unset="$3" list_ver="$4"
 	[[ -n "${target}" ]] || die -q "No compiler specified"
 	if [[ -L "${symlink}" ]]; then
 		if [[ ! "${if_unset}" || ! -d "${symlink}" ]]; then
 			# Overwrite the existing symbolic link
-			set_symlink "${target}" "${symlink}"
+			set_symlink "${target}" "${symlink}" "${list_ver}"
 		fi
 	elif [[ -e "${symlink}" ]]; then
 		die -q "Target already exists but is not a symbolic link: ${symlink}"
 	else
 		# Set a new symbolic link
-		set_symlink "${target}" "${symlink}"
+		set_symlink "${target}" "${symlink}" "${list_ver}"
 	fi
 }
 
@@ -223,8 +223,10 @@ do_set() {
 		check_system_perm
 		if [[ "$1" != "system" ]]; then
 			validate_ver "$1"
+			my_set "${PREF_SYSTEM_ROOT}/$1" "$2" "${if_unset}" "$1"
+		else
+			my_set "${PREF_SYSTEM_ROOT}/$1" "$2" "${if_unset}"
 		fi
-		my_set "${PREF_SYSTEM_ROOT}/$1" "$2" "${if_unset}"
 	fi
 }
 
