@@ -1,0 +1,253 @@
+# Copyright 2021 Gentoo Authors
+# Distributed under the terms of the GNU GPL version 2 or later
+
+DESCRIPTION="Manage Kotlin compiler preferences"
+MAINTAINER="@PACKAGE_BUGREPORT@"
+VERSION="@VERSION@"
+
+PREF_SYSTEM_ROOT="${EROOT}/etc/eselect/kotlin/homes"
+PREF_USER_SYMLINK="${HOME}/.gentoo${EPREFIX}/kotlin/home"
+PKG_DESC_ROOT="${EROOT}/usr/share/eselect-kotlin/pkgs"
+
+# Checks if the string specified via the first positional parameter is a valid
+# Kotlin feature release version string, or calls 'die' otherwise.
+validate_ver() {
+	grep -q -x "[0-9]\+.[0-9]\+" <<< "$1" || \
+		die "Invalid version: $1\nThe version string's format is x.y"
+}
+
+# Checks if there is permission to modify system-wide preferences, or calls
+# 'die' otherwise.
+check_system_perm() {
+	[[ -w "${PREF_SYSTEM_ROOT}" ]] || \
+		die "Could not set the system-wide preference: Permission denied"
+}
+
+# Echos a list of Kotlin compiler packages currently installed on the system.
+# Accepts an optional argument for a Kotlin feature release version number,
+# which causes only Kotlin compiler packages for that feature release to be
+# included in the list.
+find_targets() {
+	local vers
+	if [[ -n "$1" ]]; then
+		vers="${PKG_DESC_ROOT}/$1"
+		# Ensure the directory for the specified version exists to prevent
+		# "No such file or directory" error
+		[[ -d "${vers}" ]] || return
+	else
+		vers="${PKG_DESC_ROOT}"/*
+	fi
+	for ver in vers; do
+		for pkg in "$ver"/*; do
+			echo "${pkg}"
+		done
+	done
+}
+
+# Echos the name of the package pointed by the symbolic link specified via the
+# first positional parameter.
+get_pkg_from_symlink() {
+	basename "$(readlink "$1")"
+}
+
+# Echos the feature release version number in the package name specified via the
+# first positional parameter.
+get_ver_from_pkg() {
+	local pkg_desc="$(find "${PKG_DESC_ROOT}" -type f -name "$1")"
+	basename "$(dirname "${pkg_desc}")"
+}
+
+# Sets to a target package a symbolic link, which are specified via the first
+# and the second positional parameter respectively.  A third optional positional
+# parameter can be used to set a Kotlin feature release version.  This will be
+# used only if the target is specified as a number, in which case the number
+# should match an item in the list returned by the 'list <version>' action.
+set_symlink() {
+	local target="$1" symlink="$2" list_ver="$3"
+	if is_number "${target}"; then
+		local targets=( $(find_targets "${list_ver}") )
+		target=${targets[$(( ${target} - 1 ))]}
+	fi
+	[[ -n "${target}" ]] || die "Invalid compiler specification: '$1'"
+	local pkg_desc="$(find "${PKG_DESC_ROOT}" -type f -name "${target}")"
+	[[ -n "${pkg_desc}" ]] || die "Could not find package ${target}"
+	local pkg_home="$(
+		. "${pkg_desc}"
+		echo "${GENTOO_KOTLIN_HOME}"
+	)"
+	if [[ -d "${pkg_home}" ]]; then
+		local sym_dir="$(dirname "${symlink}")"
+		mkdir -p "${sym_dir}" || \
+			die "Could not create the directory for preferences: ${sym_dir}"
+		ln -snf "${pkg_home}" "${symlink}" || \
+			die "Could not create a symbolic link to ${pkg_home} at ${symlink}"
+	else
+		die "Could not find the contents for package ${target} at ${pkg_home}"
+	fi
+}
+
+# 'show' action
+
+describe_show() {
+	echo "Show the current Kotlin compiler"
+}
+
+describe_show_options() {
+	echo "version : Only show for a specific Kotlin version (optional)"
+}
+
+describe_show_parameters() {
+	echo "[user|system|<version>]"
+}
+
+my_show() {
+	local symlink="$1" symlink_type="$2"
+	write_list_start "Current Kotlin compiler for ${symlink_type}"
+	if [[ -L "${symlink}" ]]; then
+		write_kv_list_entry "$(get_pkg_from_symlink "${symlink}")" ""
+	else
+		write_kv_list_entry "(unset)" ""
+	fi
+}
+
+do_show() {
+	if [[ "$1" == "user" ]]; then
+		my_show "${PREF_USER_SYMLINK}" "$1"
+	elif [[ "$1" == "system" ]]; then
+		my_show "${PREF_SYSTEM_ROOT}/$1" "$1"
+	elif [[ -n "$1" ]]; then
+		validate_ver "$1"
+		my_show "${PREF_SYSTEM_ROOT}/$1" "$1"
+	else
+		my_show "${PREF_USER_SYMLINK}" "user"
+		for ver in "${PREF_SYSTEM_ROOT}"/*; do
+			my_show "${PREF_SYSTEM_ROOT}/${ver}" "${ver}"
+		done
+	fi
+}
+
+# 'list' action
+
+describe_list() {
+	echo "List installed Kotlin compilers"
+}
+
+describe_list_options() {
+	echo "version : Filter compilers for a specific Kotlin version (optional)"
+}
+
+describe_list_parameters() {
+	echo "[<version>]"
+}
+
+do_list() {
+	if [[ -n "$1" ]]; then
+		validate_ver "$1"
+		write_list_start "Available Kotlin compilers for Kotlin $1:"
+	else
+		write_list_start "Available Kotlin compilers:"
+	fi
+	local targets=( $(find_targets "$1") )
+	for (( i = 0; i < ${#targets[@]}; i++ )); do
+		local target="${targets[i]}"
+		local mark=""
+		if [[ "${target}" == "$(get_pkg_from_symlink \
+			"${PREF_USER_SYMLINK}")" ]]; then
+			mark+=" user"
+		fi
+		for ver in "${PREF_SYSTEM_ROOT}"/*; do
+			if [[ "${target}" == "$(get_pkg_from_symlink \
+				"${PREF_SYSTEM_ROOT}/${ver}")" ]]; then
+				mark+=" ${ver}"
+			fi
+		done
+		targets[i]="${targets[i]} ${mark}"
+    done
+	write_numbered_list -m "(none found)" "${all[@]}"
+}
+
+# 'set' action
+
+describe_set() {
+	echo "Set a Kotlin compiler for the system, the user, or a Kotlin version"
+}
+
+describe_set_options() {
+	echo "--if-unset : Do not change unless there is no valid compiler set"
+	echo "version	 : Set for a specific Kotlin version (optional)"
+}
+
+describe_set_parameters() {
+	echo "<user|system|<version>> <compiler>"
+}
+
+my_set() {
+	local symlink="$1" target="$2" if_unset="$3"
+	[[ -n "${target}" ]] || die -q "No compiler specified"
+	if [[ -L "${symlink}" ]]; then
+		if [[ ! "${if_unset}" || ! -d "${symlink}" ]]; then
+			# Overwrite the existing symbolic link
+			set_symlink "${target}" "${symlink}"
+		fi
+	elif [[ -e "${symlink}" ]]; then
+		die -q "Target already exists but is not a symbolic link: ${symlink}"
+	else
+		# Set a new symbolic link
+		set_symlink "${target}" "${symlink}"
+	fi
+}
+
+do_set() {
+	local if_unset
+	if [[ "$1" == "--if-unset" ]]; then
+		if_unset=true
+		shift
+	fi
+	[[ $# == 2 ]] || die -q "Usage: <user|system|<version>> <compiler>"
+	if [[ "$1" == "user" ]]; then
+		[[ "${UID}" != 0 ]] || die -q "Cannot set the user compiler for root"
+		my_set "${PREF_USER_SYMLINK}" "$2" "${if_unset}"
+	else
+		check_system_perm
+		if [[ "$1" != "system" ]]; then
+			validate_ver "$1"
+		fi
+		my_set "${PREF_SYSTEM_ROOT}/$1" "$2" "${if_unset}"
+	fi
+}
+
+# 'update' action
+
+describe_update() {
+	echo "Ensure compiler preference for every installed Kotlin version is set"
+}
+
+do_update() {
+	check_system_perm
+	for ver in "${PKG_DESC_ROOT}"; do
+		local symlink="${PREF_SYSTEM_ROOT}/${ver}"
+		if [[ ! -L "${symlink}" && -e "${symlink}" ]]; then
+			die "Target already exists but is not a symbolic link: ${symlink}"
+		fi
+		if ! [[ -L "${symlink}" && -d "${symlink}" ]]; then
+			# Arbitrarily select a compiler package and set it
+			local target=( $(find_targets "${ver}") )
+			set_symlink "${target}" "${symlink}"
+		fi
+	done
+}
+
+# 'cleanup' action
+
+describe_cleanup() {
+	echo "Unset system-wide preferences that are no longer valid"
+}
+
+do_cleanup() {
+	check_system_perm
+	for symlink in "${PREF_SYSTEM_ROOT}"/*; do
+		if [[ -L "${symlink}" && ! -d "${symlink}" ]]; then
+			rm "${symlink_abs}" || die "Failed to unset compiler preference"
+		fi
+	done
+}

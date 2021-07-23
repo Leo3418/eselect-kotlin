@@ -1,0 +1,64 @@
+#!@EPREFIX@/bin/bash
+
+# This script can be used as the symbolic link targets of Kotlin executables
+# under /usr/bin, such as /usr/bin/kotlin and /usr/bin/kotlinc, as well as
+# versioned executables like /usr/bin/kotlinc1.5.  It runs the executable for
+# either the Kotlin version specified in the executable name in case it is
+# versioned, or the Kotlin package configured with eselect-kotlin.
+
+PREF_SYSTEM_ROOT="@EPREFIX@/etc/eselect/kotlin/homes"
+
+tool="$(basename "$0")"
+
+# The GENTOO_KOTLIN_VER environment variable can be used to specify a feature
+# release of Kotlin to use.  This is mainly designed for eclasses to fulfill a
+# package's requirements on the Kotlin feature release version.
+
+# If a versioned Kotlin executable like kotlinc1.5 is called, then extract the
+# feature release version string from the executable's name, and override
+# GENTOO_KOTLIN_VER setting to use that version.
+
+exec_ver="$(grep --color=never -o "[0-9]\+.[0-9]\+$" <<< "${tool}")"
+if [[ -n "${exec_ver}" ]]; then
+    GENTOO_KOTLIN_VER="${exec_ver}"
+    tool="${tool%${exec_ver}}"
+fi
+
+if [[ -n "${GENTOO_KOTLIN_VER}" ]]; then
+    kotlin_path="$(readlink "${PREF_SYSTEM_ROOT}/${GENTOO_KOTLIN_VER}")"
+    error_msg=" * Invalid value for GENTOO_KOTLIN_VER: ${GENTOO_KOTLIN_VER}\n"
+    error_msg+=" * Could not find Kotlin at ${kotlin_path}"
+else
+    # First try to use the feature release chosen in user settings
+    user_symlink="${HOME}/.gentoo@EPREFIX@/kotlin/home"
+    if [[ -L "${user_symlink}" ]]; then
+        kotlin_path="$(readlink "${user_symlink}")"
+        error_msg=" * Invalid User Kotlin Home: ${kotlin_path}"
+    else
+        # Fall back to the global feature release chosen for the system
+        kotlin_path="$(readlink "${PREF_SYSTEM_ROOT}/system")"
+        error_msg=" * Invalid System Kotlin Home: ${kotlin_path}"
+    fi
+fi
+
+tool_path="$(
+    unset PATH
+    PATH="${kotlin_path}/bin"
+    command -v "${tool}" 2> /dev/null
+)"
+
+if [[ -x "${tool_path}" ]]; then
+    exec "${tool_path}" "$@"
+else
+    if [[ ! -d "${kotlin_path}" ]]; then
+        echo -e "${error_msg}" >&2
+    else
+        if [[ "${tool}" == "run-kotlin-tool.sh" ]]; then
+            echo " * run-kotlin-tool.sh cannot be called directly" >&2
+            echo " * Please use the Kotlin executables instead" >&2
+        else
+            echo " * ${tool} is not available in ${kotlin_path}/bin" >&2
+        fi
+    fi
+    exit 1
+fi

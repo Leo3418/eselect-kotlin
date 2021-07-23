@@ -1,0 +1,18 @@
+# Files generated from *.in
+kotlin.eselect
+run-kotlin-tool.sh
+
+# Distribution files
+eselect-kotlin-*.tar.*
+
+# Autotools
+Makefile
+Makefile.in
+aclocal.m4
+autom4te.cache/
+build-aux/
+config.log
+config.status
+configure
+install-sh
+missing
