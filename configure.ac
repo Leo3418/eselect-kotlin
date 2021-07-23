@@ -5,7 +5,7 @@ AM_INIT_AUTOMAKE([-Wall foreign no-dist-gzip dist-bzip2])
 AC_PROG_LN_S
 AC_PROG_MKDIR_P
 
-AC_SUBST(EPREFIX)
+AC_ARG_VAR([EPREFIX],[Gentoo Prefix offset])
 
 # Create output files.
 AC_CONFIG_FILES([Makefile kotlin.eselect run-kotlin-tool.sh])
