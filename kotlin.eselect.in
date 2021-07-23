@@ -63,8 +63,10 @@ get_ver_from_pkg() {
 # Sets to a target package a symbolic link, which are specified via the first
 # and the second positional parameter respectively.  A third optional positional
 # parameter can be used to set a Kotlin feature release version.  This will be
-# used only if the target is specified as a number, in which case the number
-# should match an item in the list returned by the 'list <version>' action.
+# used if the target is specified as a number, in which case the number should
+# match an item in the list returned by the 'list <version>' action.  In
+# addition, specifying a feature release will also cause an additional check for
+# verifying if the target package is exactly for the feature release.
 set_symlink() {
 	local target="$1" symlink="$2" list_ver="$3"
 
@@ -254,8 +256,8 @@ do_update() {
 		die "System preference file is not a symbolic link: ${system_symlink}"
 	fi
 	if ! [[ -L "${system_symlink}" && -d "${system_symlink}" ]]; then
-		# Arbitrarily select a compiler package for the latest feature release
-		# and set it
+		# System compiler is not set; arbitrarily select a compiler package for
+		# the latest feature release and set it
 		local latest_ver="$(ls -1 -v "${PKG_DESC_ROOT}" | tail -1)"
 		local system_target=( $(find_targets "${latest_ver}") )
 		set_symlink "${system_target}" "${system_symlink}"

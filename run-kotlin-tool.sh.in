@@ -1,6 +1,6 @@
 #!@EPREFIX@/bin/bash
 
-# This script can be used as the symbolic link targets of Kotlin executables
+# This script can be used as the symbolic link target of Kotlin executables
 # under /usr/bin, such as /usr/bin/kotlin and /usr/bin/kotlinc, as well as
 # versioned executables like /usr/bin/kotlinc1.5.  It runs the executable for
 # either the Kotlin version specified in the executable name in case it is
