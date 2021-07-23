@@ -276,7 +276,7 @@ do_cleanup() {
 	[[ -d "${PREF_SYSTEM_ROOT}" ]] || return
 	for symlink in "${PREF_SYSTEM_ROOT}"/*; do
 		if [[ -L "${symlink}" && ! -d "${symlink}" ]]; then
-			rm "${symlink_abs}" || die "Failed to unset compiler preference"
+			rm "${symlink}" || die "Failed to unset compiler preference"
 		fi
 	done
 }
