@@ -122,7 +122,6 @@ do_show() {
 		validate_ver "$1"
 		my_show "${PREF_SYSTEM_ROOT}/$1" "$1"
 	else
-		my_show "${PREF_USER_SYMLINK}" "user"
 		if [[ -d "${PREF_SYSTEM_ROOT}" ]]; then
 			for ver in "${PREF_SYSTEM_ROOT}"/*; do
 				my_show "${ver}" "$(basename "${ver}")"
@@ -135,6 +134,8 @@ do_show() {
 		if ! [[ -L "${system_symlink}" && -d "${system_symlink}" ]]; then
 			my_show "${system_symlink}" "system"
 		fi
+
+		my_show "${PREF_USER_SYMLINK}" "user"
 	fi
 }
 
@@ -163,16 +164,16 @@ do_list() {
 	for (( i = 0; i < ${#targets[@]}; i++ )); do
 		local target="${targets[i]}"
 		local mark=""
-		if [[ "${target}" == "$(get_pkg_from_symlink \
-			"${PREF_USER_SYMLINK}")" ]]; then
-			mark+=" user"
-		fi
 		for symlink in "${PREF_SYSTEM_ROOT}"/*; do
 			ver="$(basename "${symlink}")"
 			if [[ "${target}" == "$(get_pkg_from_symlink "${symlink}")" ]]; then
 				mark+=" ${ver}"
 			fi
 		done
+		if [[ "${target}" == "$(get_pkg_from_symlink \
+			"${PREF_USER_SYMLINK}")" ]]; then
+			mark+=" user"
+		fi
 		targets[i]="${targets[i]} $(highlight ${mark})"
     done
 	write_numbered_list -m "(none found)" "${targets[@]}"
