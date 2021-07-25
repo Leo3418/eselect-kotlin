@@ -50,15 +50,18 @@ tool_path="$(
 if [[ -x "${tool_path}" ]]; then
     exec "${tool_path}" "$@"
 else
+    # Exit codes follow https://www.freebsd.org/cgi/man.cgi?query=sysexits
     if [[ ! -d "${kotlin_path}" ]]; then
         echo -e "${error_msg}" >&2
+        exit 78
     else
         if [[ "${tool}" == "run-kotlin-tool.sh" ]]; then
             echo " * run-kotlin-tool.sh cannot be called directly" >&2
             echo " * Please use the Kotlin executables instead" >&2
+            exit 64
         else
             echo " * ${tool} is not available in ${kotlin_path}/bin" >&2
+            exit 69
         fi
     fi
-    exit 1
 fi
