@@ -33,11 +33,11 @@ else
     user_symlink="${HOME}/.gentoo@EPREFIX@/kotlin/home"
     if [[ -L "${user_symlink}" ]]; then
         kotlin_path="$(readlink "${user_symlink}")"
-        error_msg=" * Invalid User Kotlin Home: ${kotlin_path}"
+        error_msg=" * Invalid user Kotlin home: ${kotlin_path}"
     else
         # Fall back to the global feature release chosen for the system
         kotlin_path="$(readlink "${PREF_SYSTEM_ROOT}/system")"
-        error_msg=" * Invalid System Kotlin Home: ${kotlin_path}"
+        error_msg=" * Invalid system Kotlin home: ${kotlin_path}"
     fi
 fi
 
