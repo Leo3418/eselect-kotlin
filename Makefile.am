@@ -11,7 +11,8 @@ tools = \
 	kotlin \
 	kotlinc \
 	kotlinc-js \
-	kotlinc-jvm
+	kotlinc-jvm \
+	kotlin-dce-js
 
 $(tools):
 	$(MKDIR_P) "$(DESTDIR)/$(bindir)"
