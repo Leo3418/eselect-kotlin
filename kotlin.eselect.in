@@ -23,6 +23,13 @@ check_system_perm() {
 		die "Could not set system-wide preference: Permission denied"
 }
 
+# Returns whether the file name specified via the first positional parameter is
+# for a symbolic link to a directory.
+is_dir_symlink() {
+	[[ -L "$1" && -d "$1" ]]
+	return $?
+}
+
 # Echos a list of Kotlin compiler packages currently installed on the system.
 # Accepts an optional argument for a Kotlin feature release version number,
 # which causes only Kotlin compiler packages for that feature release to be
@@ -134,7 +141,7 @@ do_show() {
 		my_show "${PREF_SYSTEM_ROOT}/$1" "$1"
 	else
 		for ver in "${PREF_SYSTEM_ROOT}"/*; do
-			if [[ -L "${ver}" && -d "${ver}" ]]; then
+			if is_dir_symlink "${ver}"; then
 				my_show "${ver}" "$(basename "${ver}")"
 			fi
 		done
@@ -142,7 +149,7 @@ do_show() {
 		# for loop will not print anything for the system compiler.  In this
 		# case, print it separately to report that it is unset
 		local system_symlink="${PREF_SYSTEM_ROOT}/system"
-		if ! [[ -L "${system_symlink}" && -d "${system_symlink}" ]]; then
+		if ! is_dir_symlink "${system_symlink}"; then
 			my_show "${system_symlink}" "system"
 		fi
 
@@ -255,7 +262,7 @@ do_update() {
 	if [[ ! -L "${system_symlink}" && -e "${system_symlink}" ]]; then
 		die "System preference file is not a symbolic link: ${system_symlink}"
 	fi
-	if ! [[ -L "${system_symlink}" && -d "${system_symlink}" ]]; then
+	if ! is_dir_symlink "${system_symlink}"; then
 		# System compiler is not set; arbitrarily select a compiler package for
 		# the latest feature release and set it
 		local latest_ver="$(ls -1 -v "${PKG_DESC_ROOT}" | tail -1)"
@@ -268,7 +275,7 @@ do_update() {
 		if [[ ! -L "${symlink}" && -e "${symlink}" ]]; then
 			die "Target already exists but is not a symbolic link: ${symlink}"
 		fi
-		if ! [[ -L "${symlink}" && -d "${symlink}" ]]; then
+		if ! is_dir_symlink "${symlink}"; then
 			# Arbitrarily select a compiler package and set it
 			local target=( $(find_targets "${ver}") )
 			set_symlink "${target}" "${symlink}"
