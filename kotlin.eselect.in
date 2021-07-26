@@ -133,11 +133,11 @@ do_show() {
 		validate_ver "$1"
 		my_show "${PREF_SYSTEM_ROOT}/$1" "$1"
 	else
-		if [[ -d "${PREF_SYSTEM_ROOT}" ]]; then
-			for ver in "${PREF_SYSTEM_ROOT}"/*; do
+		for ver in "${PREF_SYSTEM_ROOT}"/*; do
+			if [[ -L "${ver}" && -d "${ver}" ]]; then
 				my_show "${ver}" "$(basename "${ver}")"
-			done
-		fi
+			fi
+		done
 		# If the system compiler symbolic link is not present, the previous
 		# for loop will not print anything for the system compiler.  In this
 		# case, print it separately to report that it is unset
