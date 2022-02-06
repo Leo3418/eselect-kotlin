@@ -1,4 +1,4 @@
-# Copyright 2021 Gentoo Authors
+# Copyright 2021-2022 Gentoo Authors
 # Distributed under the terms of the GNU GPL version 2 or later
 
 DESCRIPTION="Manage Kotlin compiler preferences"
@@ -30,7 +30,7 @@ is_dir_symlink() {
 	return $?
 }
 
-# Echos a list of Kotlin compiler packages currently installed on the system.
+# Echoes a list of Kotlin compiler packages currently installed on the system.
 # Accepts an optional argument for a Kotlin feature release version number,
 # which causes only Kotlin compiler packages for that feature release to be
 # included in the list.
@@ -54,14 +54,14 @@ find_targets() {
 	done
 }
 
-# Echos the name of the package pointed by the symbolic link specified via the
+# Echoes the name of the package pointed by the symbolic link specified via the
 # first positional parameter.
 get_pkg_from_symlink() {
 	basename "$(readlink "$1")"
 }
 
-# Echos the feature release version number in the package name specified via the
-# first positional parameter.
+# Echoes the feature release version number in the package name specified via
+# the first positional parameter.
 get_ver_from_pkg() {
 	local pkg_desc="$(find "${PKG_DESC_ROOT}" -type f -name "$1")"
 	basename "$(dirname "${pkg_desc}")"
