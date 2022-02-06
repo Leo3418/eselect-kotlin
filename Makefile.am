@@ -14,9 +14,11 @@ tools = \
 	kotlinc-jvm \
 	kotlin-dce-js
 
-$(tools):
-	$(MKDIR_P) "$(DESTDIR)/$(bindir)"
-	$(LN_S) "$(pkglibexecdir)/run-kotlin-tool.sh" "$(DESTDIR)/$(bindir)/$@"
+$(tools): $(DESTDIR)$(bindir)
+	$(LN_S) $(pkglibexecdir)/run-kotlin-tool.sh $</$@
+
+$(DESTDIR)$(bindir):
+	$(MKDIR_P) $@
 
 install-exec-hook: $(tools)
 
