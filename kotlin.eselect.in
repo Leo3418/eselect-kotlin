@@ -12,14 +12,14 @@ PKG_DESC_ROOT="${EROOT}/usr/share/eselect-kotlin/pkgs"
 # Checks if the string specified via the first positional parameter is a valid
 # Kotlin feature release version string, or calls 'die' otherwise.
 validate_ver() {
-	grep -q -x "[0-9]\+.[0-9]\+" <<< "$1" || \
+	grep -q -x "[0-9]\+.[0-9]\+" <<< "$1" ||
 		die "Invalid version: $1\nThe version string's format is x.y"
 }
 
 # Checks if there is permission to modify system-wide preferences, or calls
 # 'die' otherwise.
 check_system_perm() {
-	[[ -w "${PREF_SYSTEM_ROOT}" || -w "${PREF_SYSTEM_ROOT%/*/*/*}" ]] || \
+	[[ -w "${PREF_SYSTEM_ROOT}" || -w "${PREF_SYSTEM_ROOT%/*/*/*}" ]] ||
 		die "Could not set system-wide preference: Permission denied"
 }
 
@@ -83,7 +83,7 @@ set_symlink() {
 	fi
 	[[ -n "${target}" ]] || die "Invalid compiler specification: '$1'"
 
-	if [[ -n "${list_ver}" && \
+	if [[ -n "${list_ver}" &&
 		"$(get_ver_from_pkg "${target}")" != "${list_ver}" ]]; then
 		die "Package ${target} is not for Kotlin ${list_ver}"
 	fi
@@ -98,9 +98,9 @@ set_symlink() {
 
 	if [[ -d "${pkg_home}" ]]; then
 		local sym_dir="$(dirname "${symlink}")"
-		mkdir -p "${sym_dir}" || \
+		mkdir -p "${sym_dir}" ||
 			die "Could not create the directory for preferences: ${sym_dir}"
-		ln -snf "${pkg_home}" "${symlink}" || \
+		ln -snf "${pkg_home}" "${symlink}" ||
 			die "Could not create a symbolic link to ${pkg_home} at ${symlink}"
 	else
 		die "Could not find the contents for package ${target} at ${pkg_home}"
@@ -188,8 +188,8 @@ do_list() {
 				mark+=" ${ver}"
 			fi
 		done
-		if [[ "${target}" == "$(get_pkg_from_symlink \
-			"${PREF_USER_SYMLINK}")" ]]; then
+		if [[ "${target}" == \
+			"$(get_pkg_from_symlink "${PREF_USER_SYMLINK}")" ]]; then
 			mark+=" user"
 		fi
 		targets[i]="${targets[i]} $(highlight ${mark})"
