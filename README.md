@@ -181,5 +181,5 @@ then it will likely cause a file collision between packages.  It is recommended
 that the versioned commands are not associated with any specific Kotlin
 compiler package.  Possible ways of achieving this include making a separate
 package dedicated for the versioned commands and creating an eclass for Kotlin
-compiler packages that manage the versioned commands without registering them
+compiler packages that manages the versioned commands without registering them
 as a package's files.
