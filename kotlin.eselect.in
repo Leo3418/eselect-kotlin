@@ -276,9 +276,9 @@ do_update() {
 			die "Target already exists but is not a symbolic link: ${symlink}"
 		fi
 		if ! is_dir_symlink "${symlink}"; then
-			# Arbitrarily select a compiler package and set it
+			# If any compiler packages are available, arbitrarily select one
 			local target=( $(find_targets "${ver}") )
-			set_symlink "${target}" "${symlink}"
+			[[ -n "${target}" ]] && set_symlink "${target}" "${symlink}"
 		fi
 	done
 }
