@@ -1,4 +1,4 @@
-AC_INIT([eselect-kotlin], [0.1.0], [liaoyuan@gmail.com],
+AC_INIT([eselect-kotlin], [0.1.1], [liaoyuan@gmail.com],
         [eselect-kotlin], [https://github.com/Leo3418/eselect-kotlin])
 AM_INIT_AUTOMAKE([-Wall foreign no-dist-gzip dist-bzip2])
 
